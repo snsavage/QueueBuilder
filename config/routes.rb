@@ -1,3 +1,3 @@
 Rails.application.routes.draw do
-  get 'slack/event'
+  post 'slack/event'
 end

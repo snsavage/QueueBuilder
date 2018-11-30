@@ -6,27 +6,34 @@ RSpec.describe SlackController, type: :controller do
       describe "with a valid request" do
         before(:each) do
           ENV["SLACK_TOKEN"] = "test_token"
+        end
 
-          @params = {
+        let(:params) {
+          {
             "token": ENV["SLACK_TOKEN"],
             "challenge": "test_challenge",
             "type": "url_verification"
           }
-        end
+        }
 
         it "creates a new Slack command class and calls execute" do
-          post :event, { params: @params }
+          twin = double(execute: EventResponse.new)
+          allow(SlackUrlVerification).to receive(:new).and_return(twin)
+
+          post :event, { params: params }
 
           expect(SlackUrlVerification).to have_received(:new)
-          expect(instance).to have_received(:execute)
+          expect(twin).to have_received(:execute)
         end
 
         it "renders the command instance response" do
-          post :event, { params: @params }
+          post :event, { params: params }
 
-          expect(response).to have_http_status(:success)
+          expect(response).to be_successful
           expect(response.content_type).to eq "application/json"
-          expect(response.body).to eq(@params[:challenge].to_json)
+          expect(response.body).to eq(
+            {"challenge": params[:challenge]}.to_json
+          )
         end
       end
 
@@ -73,6 +80,21 @@ RSpec.describe SlackController, type: :controller do
             }
 
             post :event, { params: params }
+
+            expect(response).to have_http_status(:bad_request)
+          end
+        end
+
+        describe "with a missing type param" do
+          it "returns a 400 status" do
+            ENV["SLACK_TOKEN"] = "test_token"
+
+            params = {
+              "token": ENV["SLACK_TOKEN"],
+              "challenge": "test_challenge",
+            }
+
+            post :event, { params: params } 
 
             expect(response).to have_http_status(:bad_request)
           end

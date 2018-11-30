@@ -1,14 +1,23 @@
 class SlackController < ApplicationController
+  protect_from_forgery(
+    with: :null_session,
+    if: Proc.new {|c| c.request.format.json? }
+  )
+
   SlackEvents = {
     "url_verification": SlackUrlVerification
   }
 
   def event
-    if handshake_approved?
+    if handshake_approved? && params.has_key?(:type)
       klass = SlackEvents[params[:type].to_sym]
-      result = klass.new(params).execute
 
-      return render json: result.json, status: result.status
+      begin
+        result = klass.new(params).execute
+        return render json: result.body, status: result.status
+      rescue
+        # render json: {}, status: :bad_request
+      end
     end
 
     render json: {}, status: :bad_request
