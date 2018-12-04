@@ -19,37 +19,6 @@ RSpec.describe SlackUrlVerification do
       expect(command.params).to eq(params)
     end
 
-    it "requires a 'url_verification' type" do
-      params[:type] = 'not_url_vertification'
-
-      expect {
-        SlackUrlVerification.new(params)
-      }.to raise_error(error, "invalid slack event type")
-    end
-
-    it "requires a type" do
-      params.delete(:type)
-
-      expect {
-        SlackUrlVerification.new(params)
-      }.to raise_error(error, "missing slack event type")
-    end
-
-    it "requires a token" do
-      params.delete(:token)
-
-      expect {
-        SlackUrlVerification.new(params)
-      }.to raise_error(error, "missing slack event token")
-    end
-
-    it "requires a challenge" do
-      params.delete(:challenge)
-
-      expect {
-        SlackUrlVerification.new(params)
-      }.to raise_error(error, "missing slack event challenge")
-    end
   end
 
   describe ".execute" do
@@ -81,7 +50,41 @@ RSpec.describe SlackUrlVerification do
       end
     end
 
-    describe "with invalid token" do
+    describe("with missing params keys") do
+      it "requires a 'url_verification' type" do
+        params[:type] = 'not_url_vertification'
+
+        expect(
+          SlackUrlVerification.new(params).execute.status
+        ).to be(:bad_request)
+      end
+
+      it "requires a type" do
+        params.delete(:type)
+
+        expect(
+          SlackUrlVerification.new(params).execute.status
+        ).to be(:bad_request)
+      end
+
+      it "requires a token" do
+        params.delete(:token)
+
+        expect(
+          SlackUrlVerification.new(params).execute.status
+        ).to be(:bad_request)
+      end
+
+      it "requires a challenge" do
+        params.delete(:challenge)
+
+        expect(
+          SlackUrlVerification.new(params).execute.status
+        ).to be(:bad_request)
+      end
+    end
+
+    describe "with a properly formed invalid token" do
       let(:invalid_token) {
         {
           token: "invalid_token",

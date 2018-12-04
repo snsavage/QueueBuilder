@@ -2,40 +2,52 @@ class SlackUrlVerification
   attr_reader :params
 
   TYPE = 'url_verification'.freeze
+  CONTENT_TYPE = "application/json".freeze
 
   def initialize(params, event_response = EventResponse, error = ArgumentError)
     @params = params
     @event_response = event_response
-
-    raise error.new("missing slack event type") unless params.has_key?(:type)
-    raise error.new("missing slack event token") unless params.has_key?(:token)
-    raise error.new("missing slack event challenge") \
-      unless params.has_key?(:challenge)
-    raise error.new("invalid slack event type") if params[:type] != TYPE
   end
 
   def execute
-    content_type = "application/json"
-
-    if params[:token] == ENV["SLACK_TOKEN"]
+    if params_valid? && params[:token] == ENV["SLACK_TOKEN"]
       body = {"challenge": params[:challenge]}.to_json
-      EventResponse.new(
-        status: :ok,
-        content_type: content_type,
-        body: body
-      )
+      success_response(body)
     else
-      EventResponse.new(
-        status: :bad_request,
-        content_type: content_type,
-        body: {}.to_json
-      )
+      error_response
     end
   end
 
   def unexecute
     raise NotImplementedError.new(
       "SlackUrlVerification does not implement unexecute"
+    )
+  end
+
+  private
+
+  def params_valid?
+    return false unless params.has_key?(:type)
+    return false unless params.has_key?(:token)
+    return false unless params.has_key?(:challenge)
+    return false unless params[:type] == TYPE
+
+    return true
+  end
+
+  def success_response(body)
+    @event_response.new(
+      status: :ok,
+      content_type: CONTENT_TYPE,
+      body: body
+    )
+  end
+
+  def error_response
+    @event_response.new(
+      status: :bad_request,
+      content_type: CONTENT_TYPE,
+      body: {}.to_json
     )
   end
 end

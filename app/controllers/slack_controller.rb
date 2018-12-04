@@ -4,26 +4,36 @@ class SlackController < ApplicationController
     if: Proc.new {|c| c.request.format.json? }
   )
 
-  SlackEvents = {
+  SLACK_EVENTS = {
     "url_verification": SlackUrlVerification
-  }
+  }.freeze
 
   def event
-    if handshake_approved? && params.has_key?(:type)
-      klass = SlackEvents[params[:type].to_sym]
+    return render bad_request unless type_valid?(params)
 
-      begin
-        result = klass.new(params).execute
-        return render json: result.body, status: result.status
-      rescue
-        # render json: {}, status: :bad_request
-      end
+    klass = SLACK_EVENTS[params[:type].to_sym]
+    result = klass.new(params).execute
+
+    if result.status == :ok
+      render json: result.body, status: result.status
+    else
+      render bad_request
     end
-
-    render json: {}, status: :bad_request
   end
 
   private
+
+  def type_valid?(params)
+    return false unless params.has_key?(:type)
+    return false unless SLACK_EVENTS.has_key?(params[:type].to_sym)
+
+    return true
+  end
+
+  def bad_request
+    { json: {}, status: :bad_request }
+  end
+
   # TODO: Move this to a service object.
   def handshake_approved?
     return false if params[:token] != ENV["SLACK_TOKEN"]
